@@ -8,11 +8,60 @@
 
 void clear_console() {
 #ifdef _WIN32
-    system("cls"); // Windows
+    system("cls");
 #else
-    system("clear"); // Unix
+    system("clear");
 #endif
 }
+
+class Console {
+public:
+    enum class Color {
+        RED,
+        GREEN,
+        YELLOW,
+        BLUE,
+        MAGENTA,
+        CYAN,
+        WHITE,
+        RESET
+    };
+
+    static void set_color(Color color) {
+        switch (color) {
+        case Color::RED:
+            std::cout << "\033[31m";
+            break;
+        case Color::GREEN:
+            std::cout << "\033[32m";
+            break;
+        case Color::YELLOW:
+            std::cout << "\033[33m";
+            break;
+        case Color::BLUE:
+            std::cout << "\033[34m";
+            break;
+        case Color::MAGENTA:
+            std::cout << "\033[35m";
+            break;
+        case Color::CYAN:
+            std::cout << "\033[36m";
+            break;
+        case Color::WHITE:
+            std::cout << "\033[37m";
+            break;
+        case Color::RESET:
+            std::cout << "\033[0m";
+            break;
+        }
+    }
+
+    static void print_colored(const std::string& text, Color color) {
+        set_color(color);
+        std::cout << text;
+        set_color(Color::RESET);
+    }
+};
 
 class Wordle {
 public:
@@ -27,35 +76,38 @@ public:
         std::vector<bool> word_matched(word.length(), false);
         std::vector<bool> guess_matched(player_guess.length(), false);
 
-        bool all_correct = true;
-
         for (size_t i = 0; i < word.length(); ++i) {
             if (player_guess[i] == word[i]) {
-                std::cout << player_guess[i] << " Is Correct" << std::endl;
                 guess_matched[i] = true;
                 word_matched[i] = true;
             }
-            else {
-                all_correct = false;
-            }
         }
 
+        // check if positions correct, misplaced, wrong
         for (size_t i = 0; i < player_guess.length(); ++i) {
-            if (!guess_matched[i]) {
+            if (guess_matched[i]) {
+                Console::print_colored(std::string(1, player_guess[i]), Console::Color::GREEN);
+            }
+            else {
                 bool is_yellow = false;
-                for (size_t a = 0; a < word.length(); ++a) {
-                    if (!word_matched[a] && player_guess[i] == word[a]) {
+                for (size_t j = 0; j < word.length(); ++j) {
+                    if (!word_matched[j] && player_guess[i] == word[j]) {
                         is_yellow = true;
+                        word_matched[j] = true;
                         break;
                     }
                 }
                 if (is_yellow) {
-                    std::cout << player_guess[i] << " Is Yellow" << std::endl;
+                    Console::print_colored(std::string(1, player_guess[i]), Console::Color::YELLOW);
+                }
+                else {
+                    Console::print_colored(std::string(1, player_guess[i]), Console::Color::RED);
                 }
             }
         }
 
-        return all_correct;
+        std::cout << std::endl;
+        return std::all_of(guess_matched.begin(), guess_matched.end(), [](bool matched) { return matched; });
     }
 
 private:
@@ -65,7 +117,8 @@ private:
 std::string get_random_word(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "Failed to open wordlist file." << std::endl;
+        std::cout << "Failed to open wordlist file. Please include a file named \"wordlist.txt\" in the same directory as wordle.exe, words should be seperated by line with no spaces" << std::endl;
+        _getch();
         exit(1);
     }
 
@@ -90,8 +143,7 @@ std::string get_random_word(const std::string& filename) {
 }
 
 void play_game(int max_attempts) {
-    std::string filename = "wordlist.txt";
-    std::string secret_word = get_random_word(filename);
+    std::string secret_word = get_random_word("wordlist.txt");
 
     Wordle game(secret_word);
     std::string guess;
